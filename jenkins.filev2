@@ -1,0 +1,35 @@
+pipeline {
+    agent any
+    stages {
+        stage('Git Checkout') {
+            steps {
+                git branch: 'main', url: 'https://github.com/your-repo.git'
+            }
+        }
+        stage('Build with Maven') {
+            steps {
+                sh 'mvn -B -DskipTests clean package'
+            }
+        }
+        stage('SonarQube Scan') {
+            steps {
+                withSonarQubeEnv('sonarqube') {
+                    sh 'mvn sonar:sonar'
+                }
+            }
+        }
+        stage('Deploy to Docker') {
+            environment {
+                DOCKER_IMAGE = dockerImageName()
+            }
+            steps {
+                sh 'docker build -t $DOCKER_IMAGE .'
+                sh 'docker run -d -p 8080:8080 $DOCKER_IMAGE'
+            }
+        }
+    }
+}
+
+def dockerImageName() {
+    return "your-docker-hub-username/app-name:${env.BUILD_NUMBER}"
+}
